@@ -1,0 +1,10 @@
+piece = {ASCII_ALPHA}
+long_piece = { ASCII_ALPHA+ }
+fpiece = {"(" ~ long_piece ~ ")"}
+empty = {ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT+)?}
+
+line = {((piece | fpiece) | empty)+}
+newline = {"/" ~ line}
+
+ffen = {line ~ newline*}
+

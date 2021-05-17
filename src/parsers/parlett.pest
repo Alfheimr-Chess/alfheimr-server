@@ -1,0 +1,14 @@
+
+property = {"i" | "c" | "o"}
+special = {"~" | "^" | "&"}
+range = {ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT+)? ~ "-" ~ ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT+)?}
+distance = {"n" | (ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT+)?)}
+hippogonal = {distance ~ "/" ~ distance}
+direction = {"*" | "+" | "X>" | "X<" | "X" | "=" | ">" | "<" | hippogonal}
+directions = {direction ~ directions?}
+smove = { special? ~ (((range | distance) ~ directions) | hippogonal) }
+group = {"(" ~ smove ~ ")"}
+
+movement = {property* ~ (smove | (distance ~ group))}
+then = {"." ~ movement}
+parlett = {movement ~ then?}
