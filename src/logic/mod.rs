@@ -7,7 +7,5 @@ pub mod movement;
 /// Movement generation from movement descriptors
 pub mod move_gen;
 pub mod color;
-pub mod game_pieces;
-pub mod game_boards;
 #[cfg(test)]
 mod test;

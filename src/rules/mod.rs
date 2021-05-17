@@ -48,6 +48,9 @@ pub struct Rules {
     pub colors: Vec<PieceColor>,
 }
 
+/// Shared reference to rules.
+type SharedRules = Rc<RefCell<Rules>>;
+
 impl RulesEnv<'_> {
 
     /// Creates a new instance of a `RulesEnv` object from a lua script
