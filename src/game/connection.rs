@@ -8,8 +8,9 @@ impl Game<'_> {
     pub async fn new_connection(&mut self, addr: &SocketAddr) {
         info!("Connection established with {}", addr);
         // Finding available color
-        let new_color = self.rules.colors.iter()
-            .find(|color| self.players.iter().find(|(_, value)| Some(*color)==value.as_ref()).is_none());
+        let colors = self.rules.borrow().colors.clone();
+        let new_color = colors.iter().find(|color| 
+                self.players.iter().find(|(_, value)| Some(*color)==value.as_ref()).is_none());
         debug!("New color is: {:?}", new_color);
         // Sending initial data to client
         if let Ok(mut x) = self.clients.lock() {
@@ -17,22 +18,23 @@ impl Game<'_> {
             match new_color {
                 Some(color) => client.new_player(
                     *color,
-                    &self.rules.pieces,
-                    &self.rules.name).await,
+                    &self.rules.borrow().pieces,
+                    &self.rules.borrow().name).await,
                 None => client.new_spectator(
-                    &self.rules.pieces,
-                    &self.rules.name).await,
+                    &self.rules.borrow().pieces,
+                    &self.rules.borrow().name).await,
             }
         }
         // Mapping address to color
         self.players.insert(*addr, new_color.map_or_else(|| None, |x| Some(*x)));
         debug!("{} clients connected", self.players.len());
         // Starting game if enough players are connected and the game hasn't started yet
-        if !self.game_started && self.players.len() == self.rules.colors.len() {
+        if !self.game_started && self.players.len() == self.rules.borrow().colors.len() {
             info!("Starting game");
             self.game_started = true;
-            self.current_player = Some(self.rules.colors[0]);
-            self.send_msg(self.create_move(self.rules.colors[0])).await;
+            self.current_player = Some(self.rules.borrow().colors[0]);
+            let msg = self.create_move(self.current_player.unwrap());
+            self.send_msg(msg).await;
         // Sending board state to new client if the game is already started
         } else if self.game_started {
             self.send_msg(self.create_move(self.current_player.unwrap())).await;

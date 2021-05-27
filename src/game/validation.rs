@@ -29,7 +29,7 @@ impl Game<'_> {
         match content {
             ReceivedData::Move(given_move) => {
                 generate_moves(self.players.get(addr).unwrap().unwrap(),
-                &self.rules.pieces,
+                &self.rules.borrow().pieces,
                 &self.board.borrow(),
                 Some((&self.ast, &self.engine)))
                     .iter()

@@ -3,9 +3,6 @@ use crate::logic::move_gen::*;
 use crate::logic::color::PieceColor;
 use crate::Error;
 
-use crate::logic::game_pieces::*;
-use crate::logic::game_boards::*;
-
 /// Test to ensure pawns cant leap when they move 2 forward
 #[test]
 fn pawn_not_leaper() {
@@ -20,7 +17,7 @@ fn pawn_not_leaper() {
 #[test]
 fn perft_depth_1_moves() {
     let pieces = helper_get_standard_pieces();
-    let chess_board = board::GameBoard::from_ffen(BOARD_CHESS).unwrap();
+    let chess_board = board::GameBoard::from_ffen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
 
     let moves = generate_moves(PieceColor::White, &pieces, &chess_board, None);
     assert_eq!(moves.len(), 20);
@@ -30,7 +27,7 @@ fn perft_depth_1_moves() {
 #[test]
 fn perft_depth_2_moves() {
     let pieces = helper_get_standard_pieces();
-    let board = board::GameBoard::from_ffen(BOARD_CHESS).unwrap();
+    let board = board::GameBoard::from_ffen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
 
     assert_eq!(perft(2, PieceColor::White, &pieces, &board), 400);
 }
@@ -39,7 +36,7 @@ fn perft_depth_2_moves() {
 #[test]
 fn perft_depth_3_moves() {
     let pieces = helper_get_standard_pieces();
-    let board = board::GameBoard::from_ffen(BOARD_CHESS).unwrap();
+    let board = board::GameBoard::from_ffen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
 
     assert_eq!(perft(3, PieceColor::White, &pieces, &board), 8902);
 }
@@ -155,11 +152,11 @@ fn get_position_of_piece(board: &board::GameBoard, color: PieceColor, symbol: St
 /// Returns a list of standard pieces
 fn helper_get_standard_pieces() -> piece::PieceList {
     let mut pieces = piece::PieceList::new();
-    pieces.insert("n".to_string(), piece::Piece::from_parlett("Knight", 3.0, PIECE_KNIGHT).unwrap());
-    pieces.insert("r".to_string(), piece::Piece::from_parlett("Rook", 5.0, PIECE_ROOK).unwrap());
-    pieces.insert("p".to_string(), piece::Piece::from_parlett("Pawn", 1.0, PIECE_PAWN).unwrap());
-    pieces.insert("b".to_string(), piece::Piece::from_parlett("Bishop", 3.0, PIECE_BISHOP).unwrap());
-    pieces.insert("q".to_string(), piece::Piece::from_parlett("Queen", 8.0, PIECE_QUEEN).unwrap());
-    pieces.insert("k".to_string(), piece::Piece::from_parlett("King", 100.0, PIECE_KING).unwrap());
+    pieces.insert("n".to_string(), piece::Piece::from_parlett("Knight", 3.0, "~1/2").unwrap());
+    pieces.insert("r".to_string(), piece::Piece::from_parlett("Rook", 5.0, "n+").unwrap());
+    pieces.insert("p".to_string(), piece::Piece::from_parlett("Pawn", 1.0, "o1>,oi2>,c1X>").unwrap());
+    pieces.insert("b".to_string(), piece::Piece::from_parlett("Bishop", 3.0, "nX").unwrap());
+    pieces.insert("q".to_string(), piece::Piece::from_parlett("Queen", 8.0, "n*").unwrap());
+    pieces.insert("k".to_string(), piece::Piece::from_parlett("King", 100.0, "1*").unwrap());
     return pieces;
 }

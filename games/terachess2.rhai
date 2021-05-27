@@ -1,5 +1,8 @@
+
 let rules = rules();
+
 rules.set_name("TerraChess 2");
+
 rules.add_piece("p", "Pawn", "o1-2>,c1X>");
 rules.add_piece("k", "King", "1*,oi2*");
 rules.add_piece("q", "Queen", "n*");

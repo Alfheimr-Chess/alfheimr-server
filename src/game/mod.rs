@@ -5,7 +5,7 @@ mod validation;
 
 use crate::{
     Error,
-    rules::{self, Rules, RulesEnv},
+    rules::{self, RulesEnv, SharedRules},
     networking::{
         self,
         receiveddata::ReceivedData,
@@ -37,7 +37,7 @@ pub struct Game<'a> {
     board: Rc<RefCell<GameBoard>>,
     game_started: bool,
     current_player: Option<PieceColor>,
-    rules: Rules,
+    rules: SharedRules,
     engine: Engine,
     ast: AST,
     scope: Scope<'a>,
@@ -60,10 +60,11 @@ impl<'a> Game<'a> {
 
     /// Creates a new game
     pub fn new(clients: ClientList, env: RulesEnv<'a>) -> Game<'a> {
-        info!("Game: {}", env.rules.name);
+        info!("Game: {}", env.rules.borrow().name);
+        let board = env.rules.borrow().board.clone();
         Self {
             clients,
-            board: env.rules.board.clone(),
+            board,
             players: HashMap::new(),
             game_started: false,
             current_player: None,
@@ -104,7 +105,7 @@ impl<'a> Game<'a> {
         let ReceivedData::Move(gamemove) = content;
         info!("{:?} made move from {:?} to {:?}", self.current_player.unwrap(), gamemove.from, gamemove.to);
         self.do_move(gamemove)?;
-        let colors = &self.rules.colors;
+        let colors = &self.rules.borrow().colors;
         let next_player = colors[(self.current_player.unwrap() as usize + 1) % colors.len()];
         self.current_player = Some(next_player);
         // Checking for winners
@@ -138,7 +139,7 @@ impl<'a> Game<'a> {
         // Finds piece that is moved
         let from = gamemove.from;
         let move_piece_symbol = &self.board.borrow().board[from.1][from.0].as_ref().unwrap().symbol.clone();
-        let move_piece = &self.rules.pieces[move_piece_symbol];
+        let move_piece = &self.rules.borrow().pieces[move_piece_symbol];
         // Does move
         let take = self.board.borrow_mut().do_move(&gamemove)?;
         // Runs events
@@ -162,26 +163,14 @@ impl<'a> Game<'a> {
     /// Finds a winner if it exists
     fn find_winner(&self) -> Option<PieceColor> {
         let king_pieces = self.board.borrow().get_positions_of(&|piece: &GamePiece| {
-            piece.color == self.current_player.unwrap() && self.rules.pieces[&piece.symbol].kingstatus
+            piece.color == self.current_player.unwrap() && self.rules.borrow().pieces[&piece.symbol].kingstatus
         });
-        let opp_color = self.rules.colors[((self.current_player? as usize + 1) % self.rules.colors.len()) as usize];
-        'outer: for (x,y) in king_pieces {
-            if is_checked(self.current_player?, &x, &y, &self.rules.pieces, &self.board.borrow()) {
+        let opp_color = self.rules.borrow().colors[((self.current_player? as usize + 1) % self.rules.borrow().colors.len()) as usize];
+        for (x,y) in king_pieces {
+            if is_checked(self.current_player?, &x, &y, &self.rules.borrow().pieces, &self.board.borrow()) {
                 debug!("King, {:?}, is checked", (x,y));
-                let valid_moves: Vec<GameMove> = generate_moves(self.current_player?, &self.rules.pieces, &self.board.borrow(), Some((&self.ast, &self.engine)))
-                    .into_iter().filter(|mov| {
-                        let mut nboard = self.board.borrow().clone();
-                        nboard.do_move(&mov);
-                        let king_pieces = nboard.get_positions_of(&|piece: &GamePiece| {
-                            piece.color == self.current_player.unwrap() && self.rules.pieces[&piece.symbol].kingstatus
-                        });
-                        for (kx, ky) in &king_pieces {
-                            if is_checked(self.current_player.unwrap(), kx, ky, &self.rules.pieces, &nboard) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }).collect();
+                let valid_moves: Vec<GameMove> = generate_moves(self.current_player?, &self.rules.borrow().pieces, &self.board.borrow(), Some((&self.ast, &self.engine)))
+                    .into_iter().filter(|mov| self.king_checked_predicate(mov)).collect();
                 if valid_moves.len() > 0 {
                     debug!("King can be saved: {:?}", valid_moves);
                     return None;
@@ -195,24 +184,26 @@ impl<'a> Game<'a> {
 
     /// Creates move data with board state
     fn create_move(&self, turn: PieceColor) -> PlayerMessage {
-        let valid_moves = generate_moves(turn, &self.rules.pieces, &self.board.borrow(), Some((&self.ast, &self.engine)))
-            .into_iter().filter(|mov| {
-                let mut nboard = self.board.borrow().clone();
-                nboard.do_move(&mov);
-                let king_pieces = nboard.get_positions_of(&|piece: &GamePiece| {
-                    piece.color == self.current_player.unwrap() && self.rules.pieces[&piece.symbol].kingstatus
-                });
-                for (kx, ky) in &king_pieces {
-                    if is_checked(self.current_player.unwrap(), kx, ky, &self.rules.pieces, &nboard) {
-                        return false;
-                    }
-                }
-                return true;
-            }).collect();
+        let valid_moves = generate_moves(turn, &self.rules.borrow().pieces, &self.board.borrow(), Some((&self.ast, &self.engine)))
+            .into_iter().filter(|mov| self.king_checked_predicate(mov)).collect();
         let data = networking::socketdata::create_move(turn, &self.board.borrow(), valid_moves);
         return PlayerMessage::all_players(data);
     }
 
+    /// Predicate used to check if king is checked after move
+    fn king_checked_predicate(&self, mov: &GameMove) -> bool {
+        let mut nboard = self.board.borrow().clone();
+        nboard.do_move(&mov);
+        let king_pieces = nboard.get_positions_of(&|piece: &GamePiece| {
+            piece.color == self.current_player.unwrap() && self.rules.borrow().pieces[&piece.symbol].kingstatus
+        });
+        for (kx, ky) in &king_pieces {
+            if is_checked(self.current_player.unwrap(), kx, ky, &self.rules.borrow().pieces, &nboard) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 impl PlayerMessage {

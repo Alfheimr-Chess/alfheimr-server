@@ -45,7 +45,7 @@ async fn main() -> Result<(), Error> {
         }
     })
     .expect("Error setting Ctrl-C handler");
-    debug!("Board: {:?}", rules.rules.board);
+    debug!("Board: {:?}", rules.rules.borrow().board);
     game_loop(rx, clients, rules).await;
     Ok(())
 }
